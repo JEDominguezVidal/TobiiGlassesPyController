@@ -269,24 +269,35 @@ def update_csv_file(file_path, video_ts, gaze_ts, prev_video_ts, prev_gaze_ts):
 
 #os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
 
-# Connecting with Tobii glasses
-ipv4_address = "192.168.100.10"
-tobiiglasses = TobiiGlassesController(ipv4_address, video_scene=True)
 
 # Initial configuration
+ipv4_address = "192.168.100.10"
+
 cfg_path = "yolo/yolov3.cfg"
 weights_path = "yolo/yolov3.weights"
+cfg_tiny_path = "yolo/yolov3-tiny.cfg"
+weights_tiny_path = "yolo/yolov3-tiny.weights"
 names_path = "yolo/coco.names"
-net, classes, output_layers = load_yolo_model(cfg_path, weights_path, names_path)
+use_tiny_yolo = True
 
-cap = cv2.VideoCapture("rtsp://%s:8554/live/scene" % ipv4_address)
 alpha = 0.5  # Mask transparency
 confidence_threshold = 0.5  # Minimum confidence for bounding boxes
-csv_file_path = create_csv_file()
 
-# Previous time stamps
 prev_video_ts = None
 prev_gaze_ts = None
+
+
+# Main code beginning
+tobiiglasses = TobiiGlassesController(ipv4_address, video_scene=True)
+
+if use_tiny_yolo:
+    net, classes, output_layers = load_yolo_model_gpu(cfg_tiny_path, weights_tiny_path, names_path)
+else:
+    net, classes, output_layers = load_yolo_model_gpu(cfg_path, weights_path, names_path)
+
+cap = cv2.VideoCapture("rtsp://%s:8554/live/scene" % ipv4_address)
+
+csv_file_path = create_csv_file()
 
 timestamps = [cap.get(cv2.CAP_PROP_POS_MSEC)]
 
