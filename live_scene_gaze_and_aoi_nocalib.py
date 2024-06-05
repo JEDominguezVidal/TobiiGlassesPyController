@@ -47,16 +47,17 @@ def load_yolo_model(cfg_path, weights_path, names_path):
 
 
 
-def detect_objects_yolo(frame):
+def detect_objects_yolo(frame, confidence_threshold=0.5):
     """
-    Detects objects in the frame using YOLO and returns the bounding boxes.
+    Detects objects in the frame using YOLO and returns the bounding boxes and class IDs.
 
     Parameters:
     - frame: numpy array, video frame.
+    - confidence_threshold: float, minimum confidence to accept a detected object.
 
     Return:
     - bounding_boxes: list, array with the bounding boxes of the detected objects.
-    - final_class_ids: list, array with the classes of each detected bouding box.
+    - final_class_ids: list, array with the class IDs of the detected objects.
     """
     height, width = frame.shape[:2]
     blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
@@ -72,7 +73,7 @@ def detect_objects_yolo(frame):
             scores = detection[5:]
             class_id = np.argmax(scores)
             confidence = scores[class_id]
-            if confidence > 0.5:
+            if confidence > confidence_threshold:
                 center_x = int(detection[0] * width)
                 center_y = int(detection[1] * height)
                 w = int(detection[2] * width)
@@ -83,7 +84,7 @@ def detect_objects_yolo(frame):
                 confidences.append(float(confidence))
                 class_ids.append(class_id)
 
-    indexes = cv2.dnn.NMSBoxes(bounding_boxes, confidences, 0.5, 0.4)
+    indexes = cv2.dnn.NMSBoxes(bounding_boxes, confidences, confidence_threshold, 0.4)
     if len(indexes) > 0:
         indexes = indexes.flatten()
 
@@ -141,7 +142,7 @@ def generate_bounding_boxes(frame, cell_size=(3, 3)):
 
 
 
-def apply_gaze_mask_with_bounding_boxes(frame, gaze_pos, alpha, bounding_boxes, class_ids, classes):
+def apply_gaze_mask_with_bounding_boxes(frame, gaze_pos, alpha, bounding_boxes, class_ids, classes, confidence_threshold=0.5):
     """
     Applies a semi-transparent mask in the cell corresponding to the gaze.
 
@@ -149,19 +150,35 @@ def apply_gaze_mask_with_bounding_boxes(frame, gaze_pos, alpha, bounding_boxes, 
     - frame: numpy array, video frame.
     - gaze_position: tuple, gaze position (gaze_x, gaze_y).
     - alpha: float, mask transparency (0.0 to 1.0).
-    - bounding_boxes: list, array with the bounding boxes of each cell.
+    - bounding_boxes: list, array with the bounding boxes of detected objects.
+    - class_ids: list, array with the class IDs of the detected objects.
+    - classes: list, list of class names.
+    - confidence_threshold: float, minimum confidence to accept a bounding box.
 
     Return:
     - frame: numpy array, frame with mask applied.
     """
     gaze_x, gaze_y = gaze_pos
     mask = frame.copy()
-    for i, (x, y, w, h) in enumerate(bounding_boxes):
-        if x < gaze_x < x + w and y < gaze_y < y + h:
-            cv2.rectangle(mask, (x, y), (x + w, y + h), (0, 0, 255), -1)
-            # Dibujar la etiqueta de la clase
-            label = classes[class_ids[i]]
-            draw_label(frame, label, (x, y - 10))
+    max_confidence = 0
+    best_box = None
+    best_class_id = None
+
+    for i, (x, y, x_end, y_end) in enumerate(bounding_boxes):
+        if x < gaze_x < x_end and y < gaze_y < y_end:
+            confidence = class_ids[i]
+            if confidence > max_confidence:
+                max_confidence = confidence
+                best_box = (x, y, x_end, y_end)
+                best_class_id = class_ids[i]
+
+    if best_box and max_confidence >= confidence_threshold:
+        x, y, x_end, y_end = best_box
+        cv2.rectangle(mask, (x, y), (x_end, y_end), (0, 0, 255), -1)
+        # Draw the class label
+        label = classes[best_class_id]
+        draw_label(frame, label, (x, y - 10))
+
     cv2.addWeighted(mask, alpha, frame, 1 - alpha, 0, frame)
     return frame
 
@@ -264,6 +281,7 @@ net, classes, output_layers = load_yolo_model(cfg_path, weights_path, names_path
 
 cap = cv2.VideoCapture("rtsp://%s:8554/live/scene" % ipv4_address)
 alpha = 0.5  # Mask transparency
+confidence_threshold = 0.5  # Minimum confidence for bounding boxes
 csv_file_path = create_csv_file()
 
 # Previous time stamps
@@ -308,10 +326,10 @@ while(cap.isOpened()):
         # bounding_boxes = generate_bounding_boxes(frame)
 
         # Detect objects using YOLO
-        bounding_boxes, class_ids = detect_objects_yolo(frame)
+        bounding_boxes, class_ids = detect_objects_yolo(frame, confidence_threshold)
 
         # Aply mask with bounding boxes
-        frame = apply_gaze_mask_with_bounding_boxes(frame, (gaze_x, gaze_y), alpha, bounding_boxes, class_ids, classes)
+        frame = apply_gaze_mask_with_bounding_boxes(frame, (gaze_x, gaze_y), alpha, bounding_boxes, class_ids, classes, confidence_threshold)
 
         # Update .csv file
         update_csv_file(csv_file_path, current_video_timestamp, current_gaze_timestamp, prev_video_ts, prev_gaze_ts)
