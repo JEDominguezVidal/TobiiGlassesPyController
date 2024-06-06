@@ -24,6 +24,36 @@ import os
 
 
 
+def load_yolo_model_gpu(cfg_path, weights_path, names_path, use_cuda=True):
+    """
+    Loads the YOLO model in GPU from configuration files, weights and class names.
+
+    Parameters:
+    - cfg_path: str, path to the YOLO configuration file (.cfg).
+    - weights_path: str, path to YOLO weights file (.weights).
+    - names_path: str, path to the YOLO class name file (.names).
+    - use_cuda: bool, select if the model should use GPU or not.
+
+    Return:
+    - net: cv2.dnn_Net, neural network loaded.
+    - classes: list, list of class names.
+    - output_layers: list, list of network output layer names.
+    """
+    net = cv2.dnn.readNetFromDarknet(cfg_path, weights_path)
+    if use_cuda:
+        net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+        net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+    else:
+        net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+        net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+    with open(names_path, 'r') as f:
+        classes = [line.strip() for line in f.readlines()]
+    layer_names = net.getLayerNames()
+    output_layers = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+    return net, classes, output_layers
+
+
+
 def load_yolo_model(cfg_path, weights_path, names_path):
     """
     Loads the YOLO model from configuration files, weights and class names.
