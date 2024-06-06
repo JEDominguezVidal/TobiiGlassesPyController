@@ -95,6 +95,56 @@ def detect_objects_yolo(frame, confidence_threshold=0.5):
 
 
 
+def detect_objects_yolo(frame, confidence_threshold=0.5):
+    """
+    Detects objects in the frame using YOLO and returns the bounding boxes, class IDs, and confidences.
+
+    Parameters:
+    - frame: numpy array, video frame.
+    - confidence_threshold: float, minimum confidence to accept a detected object.
+
+    Return:
+    - bounding_boxes: list, array with the bounding boxes of the detected objects.
+    - final_class_ids: list, array with the class IDs of the detected objects.
+    - final_confidences: list, array with the confidences of the detected objects.
+    """
+    height, width = frame.shape[:2]
+    blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
+    net.setInput(blob)
+    outs = net.forward(output_layers)
+
+    bounding_boxes = []
+    confidences = []
+    class_ids = []
+
+    for out in outs:
+        for detection in out:
+            scores = detection[5:]
+            class_id = np.argmax(scores)
+            confidence = scores[class_id]
+            if confidence > confidence_threshold:
+                center_x = int(detection[0] * width)
+                center_y = int(detection[1] * height)
+                w = int(detection[2] * width)
+                h = int(detection[3] * height)
+                x = int(center_x - w / 2)
+                y = int(center_y - h / 2)
+                bounding_boxes.append([x, y, x + w, y + h])
+                confidences.append(float(confidence))
+                class_ids.append(class_id)
+
+    indexes = cv2.dnn.NMSBoxes(bounding_boxes, confidences, confidence_threshold, 0.4)
+    if len(indexes) > 0:
+        indexes = indexes.flatten()
+
+    final_boxes = [bounding_boxes[i] for i in indexes]
+    final_class_ids = [class_ids[i] for i in indexes]
+    final_confidences = [confidences[i] for i in indexes]
+
+    return final_boxes, final_class_ids, final_confidences
+
+
+
 def draw_label(frame, text, pos, font=cv2.FONT_HERSHEY_SIMPLEX, font_scale=1, font_color=(0, 255, 0), font_thickness=2):
     """
     Draws a label on the video frame.
@@ -142,7 +192,7 @@ def generate_bounding_boxes(frame, cell_size=(3, 3)):
 
 
 
-def apply_gaze_mask_with_bounding_boxes(frame, gaze_pos, alpha, bounding_boxes, class_ids, classes, confidence_threshold=0.5):
+def apply_gaze_mask_with_bounding_boxes(frame, gaze_pos, alpha, bounding_boxes, class_ids, classes, confidences, confidence_threshold=0.5):
     """
     Applies a semi-transparent mask in the cell corresponding to the gaze.
 
@@ -153,6 +203,7 @@ def apply_gaze_mask_with_bounding_boxes(frame, gaze_pos, alpha, bounding_boxes, 
     - bounding_boxes: list, array with the bounding boxes of detected objects.
     - class_ids: list, array with the class IDs of the detected objects.
     - classes: list, list of class names.
+    - confidences: list, list of confidences for each detected object.
     - confidence_threshold: float, minimum confidence to accept a bounding box.
 
     Return:
@@ -163,20 +214,22 @@ def apply_gaze_mask_with_bounding_boxes(frame, gaze_pos, alpha, bounding_boxes, 
     max_confidence = 0
     best_box = None
     best_class_id = None
+    best_confidence = None
 
     for i, (x, y, x_end, y_end) in enumerate(bounding_boxes):
         if x < gaze_x < x_end and y < gaze_y < y_end:
-            confidence = class_ids[i]
+            confidence = confidences[i]
             if confidence > max_confidence:
                 max_confidence = confidence
                 best_box = (x, y, x_end, y_end)
                 best_class_id = class_ids[i]
+                best_confidence = confidence
 
     if best_box and max_confidence >= confidence_threshold:
         x, y, x_end, y_end = best_box
         cv2.rectangle(mask, (x, y), (x_end, y_end), (0, 0, 255), -1)
-        # Draw the class label
-        label = classes[best_class_id]
+        # Draw the class label with confidence
+        label = f"{classes[best_class_id]} ({best_confidence:.2f})"
         draw_label(frame, label, (x, y - 10))
 
     cv2.addWeighted(mask, alpha, frame, 1 - alpha, 0, frame)
@@ -281,7 +334,7 @@ names_path = "yolo/coco.names"
 use_tiny_yolo = True
 
 alpha = 0.5  # Mask transparency
-confidence_threshold = 0.5  # Minimum confidence for bounding boxes
+confidence_threshold = 0.25  # Minimum confidence for bounding boxes
 
 prev_video_ts = None
 prev_gaze_ts = None
@@ -291,9 +344,9 @@ prev_gaze_ts = None
 tobiiglasses = TobiiGlassesController(ipv4_address, video_scene=True)
 
 if use_tiny_yolo:
-    net, classes, output_layers = load_yolo_model_gpu(cfg_tiny_path, weights_tiny_path, names_path)
+    net, classes, output_layers = load_yolo_model(cfg_tiny_path, weights_tiny_path, names_path)
 else:
-    net, classes, output_layers = load_yolo_model_gpu(cfg_path, weights_path, names_path)
+    net, classes, output_layers = load_yolo_model(cfg_path, weights_path, names_path)
 
 cap = cv2.VideoCapture("rtsp://%s:8554/live/scene" % ipv4_address)
 
@@ -337,10 +390,10 @@ while(cap.isOpened()):
         # bounding_boxes = generate_bounding_boxes(frame)
 
         # Detect objects using YOLO
-        bounding_boxes, class_ids = detect_objects_yolo(frame, confidence_threshold)
+        bounding_boxes, class_ids, confidences = detect_objects_yolo(frame, confidence_threshold)
 
-        # Aply mask with bounding boxes
-        frame = apply_gaze_mask_with_bounding_boxes(frame, (gaze_x, gaze_y), alpha, bounding_boxes, class_ids, classes, confidence_threshold)
+        # Apply mask with bounding boxes
+        frame = apply_gaze_mask_with_bounding_boxes(frame, (gaze_x, gaze_y), alpha, bounding_boxes, class_ids, classes, confidences, confidence_threshold)
 
         # Update .csv file
         update_csv_file(csv_file_path, current_video_timestamp, current_gaze_timestamp, prev_video_ts, prev_gaze_ts)
