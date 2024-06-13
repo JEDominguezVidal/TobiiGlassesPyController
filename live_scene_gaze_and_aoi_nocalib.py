@@ -19,6 +19,7 @@ import cv2
 import numpy as np
 import csv
 from datetime import datetime
+import time
 from tobiiglassesctrl import TobiiGlassesController
 import os
 
@@ -320,28 +321,41 @@ def create_csv_file():
     file_path = f'logs/gaze_data_{now}.csv'
     with open(file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Video TS', 'Gaze TS', 'Video TS delta', 'Gaze TS delta'])
+        writer.writerow(['Wall time from start [us]', 'Video TS (cv2) [ms]', 'Video TS [us]', 'Video PTS [pulses @ 90kHz]', 'Gaze TS [us]', 'Wall time from start delta [us]', 'Video TS (cv2) delta [ms]', 'Video TS delta [us]', 'Video PTS delta [pulses @ 90kHz]', 'Gaze TS delta [us]', 'Gaze to Video TS [us]', 'Wall time from last PTS [us]'])
     return file_path
 
 
 
-def update_csv_file(file_path, video_ts, gaze_ts, prev_video_ts, prev_gaze_ts):
+def update_csv_file(file_path, wall_time_from_start, video_ts_cv2, video_ts, video_pts, gaze_ts, prev_wall_time_from_start, prev_video_ts_cv2, prev_video_ts, prev_video_pts, prev_gaze_ts, wall_time_from_last_pts):
     """
     Updates the .csv file with the new timestamps and their differences.
 
     Parameters:
     - file_path: str, path of the .csv file.
+    - wall_time_from_start: float, wall time from starting this script.
+    - video_ts_cv2: float, current timestamp of the video obtained from OpenCV2.
     - video_ts: float, current timestamp of the video.
+    - video_pts: float, current pts timestamp of the video.
     - gaze_ts: float, current timestamp of the gaze.
+    - prev_wall_time_from_start: float, previous wall time from starting this script.
+    - prev_video_ts_cv2: float, previous timestamp of the video obtained from OpenCV2.
     - prev_video_ts: float, previous timestamp of the video.
+    - prev_video_pts: float, previous pts timestamp of the video.
     - prev_gaze_ts: float, previous gaze timestamp.
+    - wall_time_from_last_pts: float, wall time from last PTS update.
     """
+    wall_time_from_start_delta = wall_time_from_start - prev_wall_time_from_start if prev_wall_time_from_start is not None else 0
+    video_ts_cv2_delta = video_ts_cv2 - prev_video_ts_cv2 if prev_video_ts_cv2 is not None else 0
     video_ts_delta = video_ts - prev_video_ts if prev_video_ts is not None else 0
+    video_pts_delta = video_pts - prev_video_pts if prev_video_pts is not None else 0
     gaze_ts_delta = gaze_ts - prev_gaze_ts if prev_gaze_ts is not None else 0
+    gaze_to_video_ts = gaze_ts - video_ts
+
+
 
     with open(file_path, mode='a', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([video_ts, gaze_ts, video_ts_delta, gaze_ts_delta])
+        writer.writerow([wall_time_from_start, video_ts_cv2, video_ts, video_pts, gaze_ts, wall_time_from_start_delta, video_ts_cv2_delta, video_ts_delta, video_pts_delta, gaze_ts_delta, gaze_to_video_ts, wall_time_from_last_pts])
 
 
 
@@ -366,11 +380,18 @@ use_tiny_yolo = True
 alpha = 0.5  # Mask transparency
 confidence_threshold = 0.25  # Minimum confidence for bounding boxes
 
+prev_time_from_start = None
+prev_video_ts_cv2 = None
 prev_video_ts = None
+prev_video_pts = None
 prev_gaze_ts = None
+wall_time_from_last_pts = 0.0 
+wall_time_from_last_pts_acc = 0.0 
 
 
 # Main code beginning
+
+start_current_time = time.time()
 tobiiglasses = TobiiGlassesController(ipv4_address, video_scene=True)
 
 if use_tiny_yolo:
@@ -379,6 +400,7 @@ else:
     net, classes, output_layers = load_yolo_model(cfg_path, weights_path, names_path)
 
 cap = cv2.VideoCapture("rtsp://%s:8554/live/scene" % ipv4_address)
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
 csv_file_path = create_csv_file()
 
@@ -395,14 +417,26 @@ while(cap.isOpened()):
   ret, frame = cap.read()
   if ret == True:
     print("-------------------------")
-    current_video_timestamp = cap.get(cv2.CAP_PROP_POS_MSEC)
-    print("Current video timestamp: ", current_video_timestamp)
-    timestamps.append(current_video_timestamp)
+    current_time = time.time()
+    time_from_start = round((current_time - start_current_time) * 1000000) # time from beginning in microseconds
+    print("Current time: ", current_time)
+    print("Time from start: ", time_from_start)
+    current_video_timestamp_cv2 = cap.get(cv2.CAP_PROP_POS_MSEC)
+    print("Current video timestamp (from cv2): ", current_video_timestamp_cv2)
+    timestamps.append(current_video_timestamp_cv2)
     height, width = frame.shape[:2]
 
     data_gp  = tobiiglasses.get_data()['gp']
     data_pts  = tobiiglasses.get_data()['pts']
     print(data_pts)
+
+    if data_pts['ts'] > 0:
+        # Iterate over dictionary keys
+        for key, value in data_pts.items():
+            print(f'{key}: {value}')
+
+        print(data_pts['pts'])
+        
     print(data_gp)
 
     if data_gp['ts'] > 0:
@@ -426,10 +460,23 @@ while(cap.isOpened()):
         frame = apply_gaze_mask_with_bounding_boxes(frame, (gaze_x, gaze_y), alpha, bounding_boxes, class_ids, classes, confidences, confidence_threshold)
 
         # Update .csv file
-        update_csv_file(csv_file_path, current_video_timestamp, current_gaze_timestamp, prev_video_ts, prev_gaze_ts)
+        current_video_timestamp_ts = data_pts['ts']
+        current_video_timestamp_pts = data_pts['pts']
+        video_pts_delta = current_video_timestamp_pts - prev_video_pts if prev_video_pts is not None else 0
+        if video_pts_delta > 0:
+            wall_time_from_last_pts = wall_time_from_last_pts_acc + (time_from_start-prev_time_from_start) if prev_time_from_start is not None else 0
+            wall_time_from_last_pts_acc = 0.0
+        else:
+            wall_time_from_last_pts = 0.0
+            wall_time_from_last_pts_acc = wall_time_from_last_pts_acc + (time_from_start-prev_time_from_start) if prev_time_from_start is not None else 0
+
+        update_csv_file(csv_file_path, time_from_start, current_video_timestamp_cv2, current_video_timestamp_ts, current_video_timestamp_pts, current_gaze_timestamp, prev_time_from_start, prev_video_ts_cv2, prev_video_ts, prev_video_pts, prev_gaze_ts, wall_time_from_last_pts)
 
         # Update previous timestamps
-        prev_video_ts = current_video_timestamp
+        prev_time_from_start = time_from_start
+        prev_video_ts_cv2 = current_video_timestamp_cv2
+        prev_video_ts = current_video_timestamp_ts
+        prev_video_pts = current_video_timestamp_pts
         prev_gaze_ts = current_gaze_timestamp
 
 
