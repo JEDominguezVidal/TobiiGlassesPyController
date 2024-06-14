@@ -100,3 +100,6 @@ ENV/
 
 # YOLO stuff:
 yolo/
+
+# docker DHCL leases
+docker/dhcpconf/
