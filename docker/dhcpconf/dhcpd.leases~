@@ -5,22 +5,19 @@
 authoring-byte-order little-endian;
 
 lease 192.168.100.10 {
-  starts 4 2024/06/13 12:04:50;
-  ends 4 2024/06/13 12:14:50;
-  tstp 4 2024/06/13 12:14:50;
-  cltt 4 2024/06/13 12:04:50;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
+  starts 4 2024/06/13 14:03:46;
+  ends 4 2024/06/13 14:13:46;
+  tstp 4 2024/06/13 14:13:46;
+  cltt 4 2024/06/13 14:03:46;
+  binding state free;
   hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
 }
 server-duid "\000\001\000\001-\364x\316,\360]\377E\323";
 
 lease 192.168.100.10 {
-  starts 4 2024/06/13 12:10:33;
-  ends 4 2024/06/13 12:20:33;
-  cltt 4 2024/06/13 12:10:33;
+  starts 5 2024/06/14 10:25:46;
+  ends 5 2024/06/14 10:35:46;
+  cltt 5 2024/06/14 10:25:46;
   binding state active;
   next binding state free;
   rewind binding state free;
@@ -28,9 +25,9 @@ lease 192.168.100.10 {
   client-hostname "g2d";
 }
 lease 192.168.100.10 {
-  starts 4 2024/06/13 12:15:29;
-  ends 4 2024/06/13 12:25:29;
-  cltt 4 2024/06/13 12:15:29;
+  starts 5 2024/06/14 10:30:46;
+  ends 5 2024/06/14 10:40:46;
+  cltt 5 2024/06/14 10:30:46;
   binding state active;
   next binding state free;
   rewind binding state free;
@@ -38,9 +35,9 @@ lease 192.168.100.10 {
   client-hostname "g2d";
 }
 lease 192.168.100.10 {
-  starts 4 2024/06/13 12:20:19;
-  ends 4 2024/06/13 12:30:19;
-  cltt 4 2024/06/13 12:20:19;
+  starts 5 2024/06/14 10:35:12;
+  ends 5 2024/06/14 10:45:12;
+  cltt 5 2024/06/14 10:35:12;
   binding state active;
   next binding state free;
   rewind binding state free;
@@ -48,9 +45,9 @@ lease 192.168.100.10 {
   client-hostname "g2d";
 }
 lease 192.168.100.10 {
-  starts 4 2024/06/13 12:24:37;
-  ends 4 2024/06/13 12:34:37;
-  cltt 4 2024/06/13 12:24:37;
+  starts 5 2024/06/14 10:39:15;
+  ends 5 2024/06/14 10:49:15;
+  cltt 5 2024/06/14 10:39:15;
   binding state active;
   next binding state free;
   rewind binding state free;
@@ -58,110 +55,10 @@ lease 192.168.100.10 {
   client-hostname "g2d";
 }
 lease 192.168.100.10 {
-  starts 4 2024/06/13 12:28:58;
-  ends 4 2024/06/13 12:38:58;
-  cltt 4 2024/06/13 12:28:58;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 12:33:34;
-  ends 4 2024/06/13 12:43:34;
-  cltt 4 2024/06/13 12:33:34;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 12:38:14;
-  ends 4 2024/06/13 12:48:14;
-  cltt 4 2024/06/13 12:38:14;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 12:43:11;
-  ends 4 2024/06/13 12:53:11;
-  cltt 4 2024/06/13 12:43:11;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 12:46:59;
-  ends 4 2024/06/13 12:56:59;
-  cltt 4 2024/06/13 12:46:59;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 12:51:57;
-  ends 4 2024/06/13 13:01:57;
-  cltt 4 2024/06/13 12:51:57;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 12:56:09;
-  ends 4 2024/06/13 13:06:09;
-  cltt 4 2024/06/13 12:56:09;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 13:00:46;
-  ends 4 2024/06/13 13:10:46;
-  cltt 4 2024/06/13 13:00:46;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 13:04:49;
-  ends 4 2024/06/13 13:14:49;
-  cltt 4 2024/06/13 13:04:49;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 13:09:42;
-  ends 4 2024/06/13 13:19:42;
-  cltt 4 2024/06/13 13:09:42;
-  binding state active;
-  next binding state free;
-  rewind binding state free;
-  hardware ethernet 74:fe:48:22:41:0d;
-  client-hostname "g2d";
-}
-lease 192.168.100.10 {
-  starts 4 2024/06/13 13:09:42;
-  ends 4 2024/06/13 13:19:42;
-  tstp 4 2024/06/13 13:19:42;
-  cltt 4 2024/06/13 13:09:42;
+  starts 5 2024/06/14 10:39:15;
+  ends 5 2024/06/14 10:49:15;
+  tstp 5 2024/06/14 10:49:15;
+  cltt 5 2024/06/14 10:39:15;
   binding state free;
   hardware ethernet 74:fe:48:22:41:0d;
 }

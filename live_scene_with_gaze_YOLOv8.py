@@ -106,6 +106,59 @@ def apply_gaze_mask_with_bounding_boxes_YOLOv8(frame, gaze_pos, alpha, detection
     cv2.addWeighted(mask, alpha, frame, 1 - alpha, 0, frame)
     return frame
 
+def apply_bounding_boxes_YOLOv8(frame, gaze_pos, alpha, detections, classes, confidence_threshold=0.5):
+    """
+    Draw all the bounding boxes detected by YOLOv8 in red and the one corresponding to the gaze in green.
+
+    Parameters:
+    - frame: numpy array, video frame.
+    - gaze_position: tuple, gaze position (gaze_x, gaze_y).
+    - alpha: float, bounding boxes transparency (0.0 to 1.0).
+    - detections: dict, it contains bounding boxes, class_ids and confidences for each bounding box.
+    - classes: list, list of class names.
+    - confidence_threshold: float, minimum confidence to accept a bounding box.
+
+    Return:
+    - frame: numpy array, frame with bounding boxes applied.
+    """
+    gaze_x, gaze_y = gaze_pos
+    mask = frame.copy()
+    max_confidence = 0
+    best_box = None
+    best_class_id = None
+    best_confidence = None
+    red_color = (0, 0, 255)
+    green_color = (0, 255, 0)
+
+    # Draw all detections in red and find the best detection for the gaze
+    for detection in detections:
+        cords = detection.xyxy[0].tolist()
+        cords = [round(x) for x in cords]
+        confidence = detection.conf[0].item()
+        class_id = int(detection.cls[0].item())
+        label = f'{classes[class_id]} ({confidence:.2f})'
+        
+        # Draw all the bounding boxes in red
+        cv2.rectangle(mask, (cords[0], cords[1]), (cords[2], cords[3]), red_color, 2)
+        draw_label(frame, label, (cords[0], cords[1] - 10), font_color=red_color)
+        
+        # Check if gaze is within the bounding box
+        if cords[0] < gaze_x < cords[2] and cords[1] < gaze_y < cords[3] and confidence > max_confidence:
+            max_confidence = confidence
+            best_box = (cords[0], cords[1], cords[2], cords[3])
+            best_class_id = class_id
+            best_confidence = confidence
+
+    # If there is a bounding box containing the gaze with greater confidence, paint it in green
+    if best_box and max_confidence >= confidence_threshold:
+        x, y, x_end, y_end = best_box
+        cv2.rectangle(mask, (x, y), (x_end, y_end), green_color, 4)
+        label = f'{classes[best_class_id]} ({best_confidence:.2f})'
+        draw_label(frame, label, (x, y - 10), font_color=green_color)
+
+    cv2.addWeighted(mask, alpha, frame, 1 - alpha, 0, frame)
+    return frame
+
 
 # Main function
 def main():
@@ -150,12 +203,13 @@ def main():
             gaze_x, gaze_y = int(data_gp['gp'][0] * width), int(data_gp['gp'][1] * height)
 
             # Generate circle for gaze
-            cv2.circle(frame_cv, (gaze_x, gaze_y), 60, (0, 0, 255), 6)
+            cv2.circle(frame_cv, (gaze_x, gaze_y), 20, (0, 0, 255), 6)
 
             # Detect objets using fine-tuned YOLOv8
             results = model(frame_cv)
             detections = results[0].boxes
-            frame_cv = apply_gaze_mask_with_bounding_boxes_YOLOv8(frame_cv, (gaze_x, gaze_y), alpha, detections, classes, confidence_threshold)
+            #frame_cv = apply_gaze_mask_with_bounding_boxes_YOLOv8(frame_cv, (gaze_x, gaze_y), alpha, detections, classes, confidence_threshold)
+            frame_cv = apply_bounding_boxes_YOLOv8(frame_cv, (gaze_x, gaze_y), alpha, detections, classes, confidence_threshold)
 
             # Update .csv file
             current_video_timestamp_ts = data_pts['ts']
