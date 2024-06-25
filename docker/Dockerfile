@@ -5,14 +5,6 @@ ARG TOBIIGLASSESCTRL_VER
 
 RUN adduser --disabled-password docky
 
-USER docky
-
-WORKDIR /home/docky
-
-
-ENV PATH=${PATH}:/home/docky/.local/bin
-
-USER docky
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-utils \
     && apt-get update && apt-get install -y \
@@ -26,6 +18,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-tools \
     gstreamer1.0-x \
     && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /home/docky
+
+
+ENV PATH=${PATH}:/home/docky/.local/bin
+
+USER docky
+
 
 RUN cd $HOME &&\
     git clone --recursive https://github.com/ddetommaso/TobiiGlassesPyController &&\
