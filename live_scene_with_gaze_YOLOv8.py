@@ -2,6 +2,8 @@ import cv2
 import av
 import numpy as np
 import csv
+import queue
+import threading
 from datetime import datetime
 import time
 from tobiiglassesctrl import TobiiGlassesController
@@ -159,6 +161,15 @@ def apply_bounding_boxes_YOLOv8(frame, gaze_pos, alpha, detections, classes, con
     cv2.addWeighted(mask, alpha, frame, 1 - alpha, 0, frame)
     return frame
 
+def frame_grabber(container, stream, frame_queue):
+    for frame in container.decode(stream):
+        if not frame_queue.empty():
+            try:
+                frame_queue.get_nowait()  # Discard the previous frame if it's still in the queue
+            except queue.Empty:
+                pass
+        frame_queue.put(frame)
+
 
 # Main function
 def main():
@@ -169,7 +180,7 @@ def main():
     classes = ['phone', 'scissors', 'apple']
 
     alpha = 0.4  # Mask transparency
-    confidence_threshold = 0.6  # Minimum confidence for bounding boxes
+    confidence_threshold = 0.3  # Minimum confidence for bounding boxes
 
     prev_time_from_start = None
     prev_video_ts = None
@@ -189,7 +200,17 @@ def main():
     stream = container.streams.video[0]
 
     # Read until video is completed
-    for frame in container.decode(stream):
+    #for frame in container.decode(stream):
+    frame_queue = queue.Queue(maxsize=1)
+    thread = threading.Thread(target=frame_grabber, args=(container, stream, frame_queue))
+    thread.start()
+
+    while True:
+        try:
+            frame = frame_queue.get(timeout=1)  # Wait for the next frame
+        except queue.Empty:
+            continue
+
         data_gp = tobiiglasses.get_data()['gp']
         data_pts = tobiiglasses.get_data()['pts']
         frame_cv = frame.to_ndarray(format='bgr24')
