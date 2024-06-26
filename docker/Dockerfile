@@ -30,5 +30,4 @@ USER docky
 RUN cd $HOME &&\
     git clone --recursive https://github.com/JEDominguezVidal/TobiiGlassesPyController &&\
     cd TobiiGlassesPyController &&\
-    git checkout ${TOBIIGLASSESCTRL_VER} &&\
     pip3 install --user .
